@@ -14,6 +14,9 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- HLS.js for raw stream playing -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -386,7 +389,7 @@
 
                                 {/* CONDITIONAL RENDERING: TRAILER OR DETAILS */}
                                 {showTrailer ? (
-                                    <div className="w-full flex flex-col bg-black">
+                                    <div className="w-full flex flex-col bg-black relative">
                                         <button 
                                             onClick={() => setShowTrailer(false)}
                                             className={`absolute top-4 ${lang === 'ku' ? 'right-4' : 'left-4'} bg-black/50 hover:bg-imdb hover:text-black transition-colors rounded-full px-4 py-2 text-white z-20 flex items-center gap-2`}
@@ -394,16 +397,32 @@
                                             <i data-lucide="arrow-left" className="w-5 h-5"></i>
                                             {t.backToDetails}
                                         </button>
-                                        <iframe 
-                                            width="100%" 
-                                            height="100%" 
-                                            className="min-h-[500px]"
-                                            src={`https://www.youtube.com/embed/${selectedMedia.trailerId}?autoplay=1`} 
-                                            title="YouTube video player" 
-                                            frameBorder="0" 
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                            allowFullScreen
-                                        ></iframe>
+                                        <video 
+                                            id="video-player"
+                                            className="w-full h-full min-h-[500px] outline-none"
+                                            controls 
+                                            autoPlay
+                                            ref={(videoNode) => {
+                                                if (videoNode) {
+                                                    // Stream URL logic - fallback to a raw m3u8 stream for demo if none exists
+                                                    const streamSrc = selectedMedia.streamUrl || 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+                                                    
+                                                    if (Hls.isSupported()) {
+                                                        const hls = new Hls();
+                                                        hls.loadSource(streamSrc);
+                                                        hls.attachMedia(videoNode);
+                                                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                                                            videoNode.play();
+                                                        });
+                                                    } else if (videoNode.canPlayType('application/vnd.apple.mpegurl')) {
+                                                        videoNode.src = streamSrc;
+                                                        videoNode.addEventListener('loadedmetadata', function() {
+                                                            videoNode.play();
+                                                        });
+                                                    }
+                                                }
+                                            }}
+                                        ></video>
                                     </div>
                                 ) : (
                                     <>
