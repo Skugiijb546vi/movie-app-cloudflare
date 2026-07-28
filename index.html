@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMDb Explorer - LO's Media</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        imdb: '#f5c518',
+                        darkBg: '#0a0a0f',
+                        surface: '#1a1a24'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            background-color: #0a0a0f;
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .glass {
+            background: rgba(26, 26, 36, 0.7);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .modal-glass {
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(16px);
+        }
+        .movie-card {
+            transition: all 0.3s ease;
+        }
+        .movie-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+            border-color: rgba(245, 197, 24, 0.5);
+        }
+        .tab-active {
+            color: #f5c518;
+            border-bottom: 2px solid #f5c518;
+        }
+        .tab-inactive {
+            color: #a0a0b0;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-inactive:hover {
+            color: white;
+        }
+        
+        /* Language Toggle Switch */
+        .lang-switch {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 4px;
+            display: flex;
+            cursor: pointer;
+            position: relative;
+        }
+        .lang-option {
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            z-index: 1;
+            transition: color 0.3s;
+        }
+        .lang-active-bg {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            background: #f5c518;
+            border-radius: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #f5c518;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Custom Scrollbar for Modal */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body dir="ltr">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // TRANSLATIONS
+        const dict = {
+            en: {
+                title: 'IMDb Explorer',
+                searchPlaceholder: 'Search movies, series, anime...',
+                movies: 'Movies',
+                series: 'TV Series',
+                anime: 'Anime',
+                searchResults: 'Search Results',
+                topRated: 'Top Rated',
+                noResults: 'No media found',
+                trailer: 'Trailer',
+                loading: 'Loading more...',
+                director: 'Director',
+                cast: 'Cast',
+                genre: 'Genre',
+                runtime: 'Runtime',
+                close: 'Close',
+                backToDetails: 'Back to Details'
+            },
+            ku: {
+                title: 'گەڕانی IMDb',
+                searchPlaceholder: 'گەڕان بۆ فیلم، زنجیرە، ئەنیمێ...',
+                movies: 'فیلمەکان',
+                series: 'زنجیرەکان',
+                anime: 'ئەنیمێ',
+                searchResults: 'ئەنجامەکانی گەڕان',
+                topRated: 'باشترینەکان',
+                noResults: 'هیچ نەدۆزرایەوە',
+                trailer: 'ترەیلەر',
+                loading: 'زیاتر دادەبەزێت...',
+                director: 'دەرهێنەر',
+                cast: 'ئەکتەرەکان',
+                genre: 'جۆر',
+                runtime: 'کات',
+                close: 'داخستن',
+                backToDetails: 'گەڕانەوە بۆ وردەکارییەکان'
+            }
+        };
+
+        const generateDetails = (title, type) => {
+            const genres = {
+                movie: ['Drama', 'Action', 'Sci-Fi', 'Thriller', 'Crime'],
+                series: ['Drama', 'Mystery', 'Crime', 'Sci-Fi'],
+                anime: ['Action', 'Fantasy', 'Animation', 'Adventure']
+            };
+            const rTime = type === 'movie' ? Math.floor(Math.random() * 60 + 90) + ' min' : Math.floor(Math.random() * 20 + 20) + ' min/ep';
+            return {
+                genre: genres[type].sort(() => 0.5 - Math.random()).slice(0, 2).join(', '),
+                runtime: rTime,
+                director: type === 'anime' ? 'Tetsurō Araki' : 'Christopher Nolan',
+                cast: 'Leonardo DiCaprio, Brad Pitt, Tom Hardy, Christian Bale',
+                plot: `This is the epic and thrilling story of "${title}". When a sudden event changes everything, the main characters must face their darkest fears, uncover hidden truths, and fight for survival in a world that is completely against them.`,
+                // Using the Interstellar trailer as a generic awesome placeholder for all mock data for now
+                trailerId: 'zSWdZVtXT7E' 
+            };
+        };
+
+        const MOCK_DATA = [
+            { id: 'm1', type: 'movie', title: 'The Shawshank Redemption', year: '1994', rating: '9.3', poster: 'https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dENvU.jpg', ...generateDetails('The Shawshank Redemption', 'movie') },
+            { id: 'm2', type: 'movie', title: 'The Godfather', year: '1972', rating: '9.2', poster: 'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg', ...generateDetails('The Godfather', 'movie') },
+            { id: 'm3', type: 'movie', title: 'The Dark Knight', year: '2008', rating: '9.0', poster: 'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg', ...generateDetails('The Dark Knight', 'movie') },
+            { id: 'm4', type: 'movie', title: 'Schindler\'s List', year: '1993', rating: '9.0', poster: 'https://image.tmdb.org/t/p/w500/sF1U4EUQS8YHUYjNl3pMGNIQyr0.jpg', ...generateDetails('Schindler\'s List', 'movie') },
+            { id: 'm5', type: 'movie', title: 'Pulp Fiction', year: '1994', rating: '8.9', poster: 'https://image.tmdb.org/t/p/w500/d5iIlFn5s0ImszYzBPbOYKQmiXy.jpg', ...generateDetails('Pulp Fiction', 'movie') },
+            { id: 'm6', type: 'movie', title: 'The Lord of the Rings: The Return of the King', year: '2003', rating: '9.0', poster: 'https://image.tmdb.org/t/p/w500/rCzpDGLbOoPwLjy3OAm5NUPOTrC.jpg', ...generateDetails('The Lord of the Rings', 'movie') },
+            { id: 'm7', type: 'movie', title: 'Forrest Gump', year: '1994', rating: '8.8', poster: 'https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg', ...generateDetails('Forrest Gump', 'movie') },
+            { id: 'm8', type: 'movie', title: 'Inception', year: '2010', rating: '8.8', poster: 'https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg', ...generateDetails('Inception', 'movie') },
+            { id: 'm9', type: 'movie', title: 'The Matrix', year: '1999', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg', ...generateDetails('The Matrix', 'movie') },
+            { id: 'm10', type: 'movie', title: 'Goodfellas', year: '1990', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/aKuFiU82s5ISJpGZp7YkIr3kCUd.jpg', ...generateDetails('Goodfellas', 'movie') },
+            { id: 'm11', type: 'movie', title: 'Interstellar', year: '2014', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/gEU2QlsUUQOcENIWGvh4vsJTO2J.jpg', ...generateDetails('Interstellar', 'movie') },
+            { id: 'm12', type: 'movie', title: 'Spider-Man: Across the Spider-Verse', year: '2023', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg', ...generateDetails('Spider-Man', 'movie') },
+            { id: 's1', type: 'series', title: 'Breaking Bad', year: '2008-2013', rating: '9.5', poster: 'https://image.tmdb.org/t/p/w500/ggFHVNu6YYI5L9pCfOacjizRGTw.jpg', ...generateDetails('Breaking Bad', 'series') },
+            { id: 's2', type: 'series', title: 'Game of Thrones', year: '2011-2019', rating: '9.2', poster: 'https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg', ...generateDetails('Game of Thrones', 'series') },
+            { id: 's3', type: 'series', title: 'Stranger Things', year: '2016-', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8TJqDf9tF.jpg', ...generateDetails('Stranger Things', 'series') },
+            { id: 'a1', type: 'anime', title: 'Attack on Titan', year: '2013-2023', rating: '9.1', poster: 'https://image.tmdb.org/t/p/w500/hTP1DtLGFamjTEP6vK8iL1PifZp.jpg', ...generateDetails('Attack on Titan', 'anime') },
+            { id: 'a2', type: 'anime', title: 'Death Note', year: '2006-2007', rating: '9.0', poster: 'https://image.tmdb.org/t/p/w500/tC3PZMBFhwqR6j5eF0T2Hk8I5d5.jpg', ...generateDetails('Death Note', 'anime') },
+            { id: 'a3', type: 'anime', title: 'Fullmetal Alchemist: Brotherhood', year: '2009-2010', rating: '9.1', poster: 'https://image.tmdb.org/t/p/w500/5ZFZN2F4B3sRj0Y9xV0aFvM2dZ3.jpg', ...generateDetails('FMA: Brotherhood', 'anime') }
+        ];
+
+        const ITEMS_PER_PAGE = 8;
+
+        function App() {
+            const [search, setSearch] = React.useState('');
+            const [activeTab, setActiveTab] = React.useState('movie');
+            const [lang, setLang] = React.useState('en');
+            const [visibleCount, setVisibleCount] = React.useState(ITEMS_PER_PAGE);
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [selectedMedia, setSelectedMedia] = React.useState(null);
+            const [showTrailer, setShowTrailer] = React.useState(false); // NEW STATE FOR TRAILER
+            
+            const t = dict[lang];
+
+            React.useEffect(() => {
+                lucide.createIcons();
+                document.body.dir = lang === 'ku' ? 'rtl' : 'ltr';
+            }, [lang, activeTab, search, visibleCount, selectedMedia, showTrailer]);
+
+            React.useEffect(() => {
+                setVisibleCount(ITEMS_PER_PAGE);
+            }, [activeTab, search]);
+
+            React.useEffect(() => {
+                const handleScroll = () => {
+                    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+                        loadMore();
+                    }
+                };
+                
+                window.addEventListener('scroll', handleScroll);
+                return () => window.removeEventListener('scroll', handleScroll);
+            }, [visibleCount, activeTab, search]);
+
+            const loadMore = () => {
+                const currentFiltered = MOCK_DATA.filter(item => {
+                    const matchesTab = item.type === activeTab;
+                    const matchesSearch = item.title.toLowerCase().includes(search.toLowerCase());
+                    return matchesTab && matchesSearch;
+                });
+                
+                if (visibleCount < currentFiltered.length && !isLoading) {
+                    setIsLoading(true);
+                    setTimeout(() => {
+                        setVisibleCount(prev => prev + ITEMS_PER_PAGE);
+                        setIsLoading(false);
+                    }, 600); 
+                }
+            };
+
+            const toggleLang = () => {
+                setLang(prev => prev === 'en' ? 'ku' : 'en');
+            };
+
+            const closeMediaModal = () => {
+                setSelectedMedia(null);
+                setShowTrailer(false); // Reset trailer state when closing modal
+            };
+
+            const allFilteredData = MOCK_DATA.filter(item => {
+                const matchesTab = item.type === activeTab;
+                const matchesSearch = item.title.toLowerCase().includes(search.toLowerCase());
+                return matchesTab && matchesSearch;
+            });
+            
+            const visibleData = allFilteredData.slice(0, visibleCount);
+            const hasMore = visibleCount < allFilteredData.length;
+
+            return (
+                <div className="min-h-screen flex flex-col">
+                    <header className="glass sticky top-0 z-40 px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-2 text-imdb font-extrabold text-2xl">
+                            <i data-lucide="film" className="w-8 h-8"></i>
+                            <span>{t.title}</span>
+                        </div>
+                        
+                        <div className="flex items-center bg-black/50 border border-white/10 rounded-lg px-4 py-2 w-full md:w-96 focus-within:border-imdb focus-within:ring-1 focus-within:ring-imdb transition-all">
+                            <i data-lucide="search" className={`w-5 h-5 text-gray-400 ${lang === 'ku' ? 'ml-2' : 'mr-2'}`}></i>
+                            <input 
+                                type="text" 
+                                placeholder={t.searchPlaceholder} 
+                                className="bg-transparent text-white w-full outline-none"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="lang-switch" onClick={toggleLang}>
+                            <div className="lang-active-bg" style={{
+                                left: lang === 'en' ? '4px' : '50%',
+                                right: lang === 'en' ? '50%' : '4px',
+                            }}></div>
+                            <span className={`lang-option ${lang === 'en' ? 'text-black' : 'text-white'}`}>EN</span>
+                            <span className={`lang-option ${lang === 'ku' ? 'text-black' : 'text-white'}`}>KU</span>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 w-full max-w-7xl mx-auto p-8 relative">
+                        <div className="flex gap-8 border-b border-white/10 mb-8 font-semibold text-lg">
+                            <button 
+                                className={`pb-4 px-2 transition-colors ${activeTab === 'movie' ? 'tab-active' : 'tab-inactive'}`}
+                                onClick={() => setActiveTab('movie')}
+                            >
+                                {t.movies}
+                            </button>
+                            <button 
+                                className={`pb-4 px-2 transition-colors ${activeTab === 'series' ? 'tab-active' : 'tab-inactive'}`}
+                                onClick={() => setActiveTab('series')}
+                            >
+                                {t.series}
+                            </button>
+                            <button 
+                                className={`pb-4 px-2 transition-colors ${activeTab === 'anime' ? 'tab-active' : 'tab-inactive'}`}
+                                onClick={() => setActiveTab('anime')}
+                            >
+                                {t.anime}
+                            </button>
+                        </div>
+
+                        <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
+                            <i data-lucide="trending-up" className="text-imdb w-8 h-8"></i>
+                            {search ? t.searchResults : `${t.topRated} ${activeTab === 'movie' ? t.movies : activeTab === 'series' ? t.series : t.anime}`}
+                        </h2>
+
+                        {allFilteredData.length === 0 ? (
+                            <div className="text-center py-20 text-red-400">
+                                <i data-lucide="alert-circle" className="w-16 h-16 mx-auto mb-4 opacity-50"></i>
+                                <h3 className="text-xl">{t.noResults}</h3>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-8">
+                                    {visibleData.map((item) => (
+                                        <div key={item.id} onClick={() => setSelectedMedia(item)} className="movie-card bg-surface rounded-xl overflow-hidden border border-white/10 cursor-pointer">
+                                            <div className="relative pt-[150%] bg-[#2a2a36]">
+                                                <img src={item.poster} alt={item.title} loading="lazy" className="absolute top-0 left-0 w-full h-full object-cover" />
+                                                <div className={`absolute top-3 ${lang === 'ku' ? 'left-3' : 'right-3'} bg-black/80 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 flex items-center gap-1 text-imdb font-bold text-sm`}>
+                                                    <i data-lucide="star" className="w-4 h-4 fill-imdb"></i>
+                                                    {item.rating}
+                                                </div>
+                                            </div>
+                                            <div className="p-4">
+                                                <h3 className="font-semibold text-lg truncate mb-1" title={item.title}>{item.title}</h3>
+                                                <div className="flex justify-between text-gray-400 text-sm">
+                                                    <span>{item.year}</span>
+                                                    <span className="flex items-center gap-1"><i data-lucide="play" className="w-3 h-3"></i> {t.trailer}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                {hasMore && (
+                                    <div className="flex flex-col items-center justify-center py-8 text-imdb">
+                                        <div className="spinner mb-2"></div>
+                                        <span className="text-sm font-medium">{t.loading}</span>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </main>
+
+                    {/* DETAILS MODAL */}
+                    {selectedMedia && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            {/* Backdrop */}
+                            <div 
+                                className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity"
+                                onClick={closeMediaModal}
+                            ></div>
+                            
+                            {/* Modal Content */}
+                            <div className="relative w-full max-w-4xl min-h-[500px] max-h-[90vh] overflow-y-auto custom-scrollbar modal-glass rounded-2xl border border-white/10 shadow-2xl flex flex-col md:flex-row z-10 animate-[scaleIn_0.2s_ease-out]">
+                                
+                                <button 
+                                    onClick={closeMediaModal}
+                                    className={`absolute top-4 ${lang === 'ku' ? 'left-4' : 'right-4'} bg-black/50 hover:bg-imdb hover:text-black transition-colors rounded-full p-2 text-white z-20`}
+                                >
+                                    <i data-lucide="x" className="w-6 h-6"></i>
+                                </button>
+
+                                {/* CONDITIONAL RENDERING: TRAILER OR DETAILS */}
+                                {showTrailer ? (
+                                    <div className="w-full flex flex-col bg-black">
+                                        <button 
+                                            onClick={() => setShowTrailer(false)}
+                                            className={`absolute top-4 ${lang === 'ku' ? 'right-4' : 'left-4'} bg-black/50 hover:bg-imdb hover:text-black transition-colors rounded-full px-4 py-2 text-white z-20 flex items-center gap-2`}
+                                        >
+                                            <i data-lucide="arrow-left" className="w-5 h-5"></i>
+                                            {t.backToDetails}
+                                        </button>
+                                        <iframe 
+                                            width="100%" 
+                                            height="100%" 
+                                            className="min-h-[500px]"
+                                            src={`https://www.youtube.com/embed/${selectedMedia.trailerId}?autoplay=1`} 
+                                            title="YouTube video player" 
+                                            frameBorder="0" 
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                            allowFullScreen
+                                        ></iframe>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="w-full md:w-1/3 relative">
+                                            <img src={selectedMedia.poster} alt={selectedMedia.title} className="w-full h-full object-cover min-h-[300px]" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] to-transparent md:hidden"></div>
+                                        </div>
+
+                                        <div className="w-full md:w-2/3 p-8 flex flex-col justify-center">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="bg-imdb text-black font-bold px-3 py-1 rounded-md text-sm">{selectedMedia.year}</span>
+                                                <div className="flex items-center gap-1 text-imdb font-bold text-lg">
+                                                    <i data-lucide="star" className="w-5 h-5 fill-imdb"></i>
+                                                    {selectedMedia.rating} / 10
+                                                </div>
+                                            </div>
+                                            
+                                            <h2 className="text-4xl font-extrabold mb-4">{selectedMedia.title}</h2>
+                                            
+                                            <div className="flex flex-wrap gap-2 mb-6">
+                                                {selectedMedia.genre.split(',').map((g, i) => (
+                                                    <span key={i} className="border border-white/20 rounded-full px-3 py-1 text-sm text-gray-300">{g.trim()}</span>
+                                                ))}
+                                            </div>
+                                            
+                                            <p className="text-gray-300 text-lg leading-relaxed mb-8">
+                                                {selectedMedia.plot}
+                                            </p>
+                                            
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+                                                <div>
+                                                    <h4 className="text-gray-500 uppercase font-semibold mb-1">{t.director}</h4>
+                                                    <p className="font-medium text-white">{selectedMedia.director}</p>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-gray-500 uppercase font-semibold mb-1">{t.runtime}</h4>
+                                                    <p className="font-medium text-white">{selectedMedia.runtime}</p>
+                                                </div>
+                                                <div className="sm:col-span-2">
+                                                    <h4 className="text-gray-500 uppercase font-semibold mb-1">{t.cast}</h4>
+                                                    <p className="font-medium text-white">{selectedMedia.cast}</p>
+                                                </div>
+                                            </div>
+
+                                            <button 
+                                                onClick={() => setShowTrailer(true)}
+                                                className="mt-8 bg-imdb text-black font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 hover:bg-yellow-400 transition-colors w-fit"
+                                            >
+                                                <i data-lucide="play" className="w-5 h-5 fill-black"></i>
+                                                {t.trailer}
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    <style dangerouslySetInnerHTML={{__html: `
+                        @keyframes scaleIn {
+                            from { opacity: 0; transform: scale(0.95); }
+                            to { opacity: 1; transform: scale(1); }
+                        }
+                    `}} />
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
