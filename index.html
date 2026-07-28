@@ -216,14 +216,26 @@
             const [visibleCount, setVisibleCount] = React.useState(ITEMS_PER_PAGE);
             const [isLoading, setIsLoading] = React.useState(false);
             const [selectedMedia, setSelectedMedia] = React.useState(null);
-            const [showTrailer, setShowTrailer] = React.useState(false); // NEW STATE FOR TRAILER
+            const [showTrailer, setShowTrailer] = React.useState(false);
+            const [moviesData, setMoviesData] = React.useState(MOCK_DATA);
             
             const t = dict[lang];
 
             React.useEffect(() => {
+                fetch('movies.json?t=' + new Date().getTime())
+                    .then(res => res.json())
+                    .then(data => {
+                        if (Array.isArray(data) && data.length > 0) {
+                            setMoviesData(data);
+                        }
+                    })
+                    .catch(err => console.log('Using mock data...'));
+            }, []);
+
+            React.useEffect(() => {
                 lucide.createIcons();
                 document.body.dir = lang === 'ku' ? 'rtl' : 'ltr';
-            }, [lang, activeTab, search, visibleCount, selectedMedia, showTrailer]);
+            }, [lang, activeTab, search, visibleCount, selectedMedia, showTrailer, moviesData]);
 
             React.useEffect(() => {
                 setVisibleCount(ITEMS_PER_PAGE);
@@ -241,7 +253,7 @@
             }, [visibleCount, activeTab, search]);
 
             const loadMore = () => {
-                const currentFiltered = MOCK_DATA.filter(item => {
+                const currentFiltered = moviesData.filter(item => {
                     const matchesTab = item.type === activeTab;
                     const matchesSearch = item.title.toLowerCase().includes(search.toLowerCase());
                     return matchesTab && matchesSearch;
@@ -265,7 +277,7 @@
                 setShowTrailer(false); // Reset trailer state when closing modal
             };
 
-            const allFilteredData = MOCK_DATA.filter(item => {
+            const allFilteredData = moviesData.filter(item => {
                 const matchesTab = item.type === activeTab;
                 const matchesSearch = item.title.toLowerCase().includes(search.toLowerCase());
                 return matchesTab && matchesSearch;
