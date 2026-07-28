@@ -1,0 +1,30 @@
+[
+  {
+    "id": "m1",
+    "type": "movie",
+    "title": "Tears of Steel",
+    "year": "2012",
+    "rating": "8.5",
+    "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Tears_of_Steel_poster.jpg/800px-Tears_of_Steel_poster.jpg",
+    "genre": "Sci-Fi, Action",
+    "runtime": "12 min",
+    "director": "Ian Hubert",
+    "cast": "Derek de Lint, Sergio Hasselbaink, Rogier Schippers",
+    "plot": "Tears of Steel is a short sci-fi film set in a dystopian future.",
+    "streamUrl": "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"
+  },
+  {
+    "id": "m2",
+    "type": "movie",
+    "title": "Big Buck Bunny",
+    "year": "2008",
+    "rating": "8.0",
+    "poster": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Big_buck_bunny_poster_big.jpg/800px-Big_buck_bunny_poster_big.jpg",
+    "genre": "Animation, Comedy",
+    "runtime": "10 min",
+    "director": "Sacha Goedegebure",
+    "cast": "N/A",
+    "plot": "A large and lovable rabbit takes revenge on three bullying rodents.",
+    "streamUrl": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+  }
+]
