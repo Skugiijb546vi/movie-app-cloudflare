@@ -139,7 +139,7 @@
                 searchResults: 'Search Results',
                 topRated: 'Top Rated',
                 noResults: 'No media found',
-                trailer: 'Trailer',
+                trailer: 'Play Movie',
                 loading: 'Loading more...',
                 director: 'Director',
                 cast: 'Cast',
@@ -157,7 +157,7 @@
                 searchResults: 'ئەنجامەکانی گەڕان',
                 topRated: 'باشترینەکان',
                 noResults: 'هیچ نەدۆزرایەوە',
-                trailer: 'ترەیلەر',
+                trailer: 'لێدانی فیلم',
                 loading: 'زیاتر دادەبەزێت...',
                 director: 'دەرهێنەر',
                 cast: 'ئەکتەرەکان',
@@ -469,9 +469,9 @@
 
                                             <button 
                                                 onClick={() => setShowTrailer(true)}
-                                                className="mt-8 bg-imdb text-black font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 hover:bg-yellow-400 transition-colors w-fit"
+                                                className="mt-8 bg-imdb text-black font-extrabold py-4 px-10 rounded-xl flex items-center justify-center gap-3 hover:bg-yellow-400 transition-all hover:scale-105 w-full shadow-lg shadow-imdb/20 text-xl"
                                             >
-                                                <i data-lucide="play" className="w-5 h-5 fill-black"></i>
+                                                <i data-lucide="play-circle" className="w-8 h-8 fill-black"></i>
                                                 {t.trailer}
                                             </button>
                                         </div>
