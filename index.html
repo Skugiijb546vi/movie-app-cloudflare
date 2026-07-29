@@ -15,7 +15,7 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- HLS.js for raw stream playing -->
+    <!-- HLS.js for raw stream playing (Channels only) -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
         tailwind.config = {
@@ -69,7 +69,6 @@
             color: white;
         }
         
-        /* Language Toggle Switch */
         .lang-switch {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -96,7 +95,6 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Loading Spinner */
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.1);
             border-left-color: #f5c518;
@@ -107,7 +105,6 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Custom Scrollbar for Modal */
         .custom-scrollbar::-webkit-scrollbar {
             width: 8px;
         }
@@ -122,13 +119,19 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
         }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
 <body dir="ltr">
     <div id="root"></div>
 
     <script type="text/babel">
-        // TRANSLATIONS
+        const TMDB_API_KEY = '15d2ea6d0dc1d476efbcea3ba5368bd8';
+        const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+        const IMG_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+
         const dict = {
             en: {
                 title: 'IMDb Explorer',
@@ -136,16 +139,16 @@
                 movies: 'Movies',
                 series: 'TV Series',
                 anime: 'Anime',
-                channels: 'Channels',
+                channels: 'Live Channels',
                 searchResults: 'Search Results',
-                topRated: 'Top Rated',
+                topRated: 'Trending',
                 noResults: 'No media found',
-                trailer: 'Play Movie',
+                trailer: 'Play',
                 loading: 'Loading more...',
-                director: 'Director',
-                cast: 'Cast',
+                director: 'Director / Network',
+                cast: 'Language',
                 genre: 'Genre',
-                runtime: 'Runtime',
+                runtime: 'Release',
                 close: 'Close',
                 backToDetails: 'Back to Details'
             },
@@ -155,138 +158,134 @@
                 movies: 'فیلمەکان',
                 series: 'زنجیرەکان',
                 anime: 'ئەنیمێ',
-                channels: 'کەناڵەکان',
+                channels: 'کەناڵە ڕاستەوخۆکان',
                 searchResults: 'ئەنجامەکانی گەڕان',
-                topRated: 'باشترینەکان',
+                topRated: 'باوترینەکان',
                 noResults: 'هیچ نەدۆزرایەوە',
-                trailer: 'لێدانی فیلم',
+                trailer: 'لێدان',
                 loading: 'زیاتر دادەبەزێت...',
-                director: 'دەرهێنەر',
-                cast: 'ئەکتەرەکان',
+                director: 'دەرهێنەر / کەناڵ',
+                cast: 'زمان',
                 genre: 'جۆر',
-                runtime: 'کات',
+                runtime: 'بڵاوکردنەوە',
                 close: 'داخستن',
                 backToDetails: 'گەڕانەوە بۆ وردەکارییەکان'
             }
         };
 
-        const generateDetails = (title, type) => {
-            const genres = {
-                movie: ['Drama', 'Action', 'Sci-Fi', 'Thriller', 'Crime'],
-                series: ['Drama', 'Mystery', 'Crime', 'Sci-Fi'],
-                anime: ['Action', 'Fantasy', 'Animation', 'Adventure']
-            };
-            const rTime = type === 'movie' ? Math.floor(Math.random() * 60 + 90) + ' min' : Math.floor(Math.random() * 20 + 20) + ' min/ep';
-            return {
-                genre: genres[type].sort(() => 0.5 - Math.random()).slice(0, 2).join(', '),
-                runtime: rTime,
-                director: type === 'anime' ? 'Tetsurō Araki' : 'Christopher Nolan',
-                cast: 'Leonardo DiCaprio, Brad Pitt, Tom Hardy, Christian Bale',
-                plot: `This is the epic and thrilling story of "${title}". When a sudden event changes everything, the main characters must face their darkest fears, uncover hidden truths, and fight for survival in a world that is completely against them.`,
-                // Using the Interstellar trailer as a generic awesome placeholder for all mock data for now
-                trailerId: 'zSWdZVtXT7E' 
-            };
-        };
-
-        const MOCK_DATA = [
-            { id: 'm1', type: 'movie', title: 'The Shawshank Redemption', year: '1994', rating: '9.3', poster: 'https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dENvU.jpg', ...generateDetails('The Shawshank Redemption', 'movie') },
-            { id: 'm2', type: 'movie', title: 'The Godfather', year: '1972', rating: '9.2', poster: 'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg', ...generateDetails('The Godfather', 'movie') },
-            { id: 'm3', type: 'movie', title: 'The Dark Knight', year: '2008', rating: '9.0', poster: 'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg', ...generateDetails('The Dark Knight', 'movie') },
-            { id: 'm4', type: 'movie', title: 'Schindler\'s List', year: '1993', rating: '9.0', poster: 'https://image.tmdb.org/t/p/w500/sF1U4EUQS8YHUYjNl3pMGNIQyr0.jpg', ...generateDetails('Schindler\'s List', 'movie') },
-            { id: 'm5', type: 'movie', title: 'Pulp Fiction', year: '1994', rating: '8.9', poster: 'https://image.tmdb.org/t/p/w500/d5iIlFn5s0ImszYzBPbOYKQmiXy.jpg', ...generateDetails('Pulp Fiction', 'movie') },
-            { id: 'm6', type: 'movie', title: 'The Lord of the Rings: The Return of the King', year: '2003', rating: '9.0', poster: 'https://image.tmdb.org/t/p/w500/rCzpDGLbOoPwLjy3OAm5NUPOTrC.jpg', ...generateDetails('The Lord of the Rings', 'movie') },
-            { id: 'm7', type: 'movie', title: 'Forrest Gump', year: '1994', rating: '8.8', poster: 'https://image.tmdb.org/t/p/w500/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg', ...generateDetails('Forrest Gump', 'movie') },
-            { id: 'm8', type: 'movie', title: 'Inception', year: '2010', rating: '8.8', poster: 'https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg', ...generateDetails('Inception', 'movie') },
-            { id: 'm9', type: 'movie', title: 'The Matrix', year: '1999', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg', ...generateDetails('The Matrix', 'movie') },
-            { id: 'm10', type: 'movie', title: 'Goodfellas', year: '1990', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/aKuFiU82s5ISJpGZp7YkIr3kCUd.jpg', ...generateDetails('Goodfellas', 'movie') },
-            { id: 'm11', type: 'movie', title: 'Interstellar', year: '2014', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/gEU2QlsUUQOcENIWGvh4vsJTO2J.jpg', ...generateDetails('Interstellar', 'movie') },
-            { id: 'm12', type: 'movie', title: 'Spider-Man: Across the Spider-Verse', year: '2023', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg', ...generateDetails('Spider-Man', 'movie') },
-            { id: 's1', type: 'series', title: 'Breaking Bad', year: '2008-2013', rating: '9.5', poster: 'https://image.tmdb.org/t/p/w500/ggFHVNu6YYI5L9pCfOacjizRGTw.jpg', ...generateDetails('Breaking Bad', 'series') },
-            { id: 's2', type: 'series', title: 'Game of Thrones', year: '2011-2019', rating: '9.2', poster: 'https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg', ...generateDetails('Game of Thrones', 'series') },
-            { id: 's3', type: 'series', title: 'Stranger Things', year: '2016-', rating: '8.7', poster: 'https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8TJqDf9tF.jpg', ...generateDetails('Stranger Things', 'series') },
-            { id: 'a1', type: 'anime', title: 'Attack on Titan', year: '2013-2023', rating: '9.1', poster: 'https://image.tmdb.org/t/p/w500/hTP1DtLGFamjTEP6vK8iL1PifZp.jpg', ...generateDetails('Attack on Titan', 'anime') },
-            { id: 'a2', type: 'anime', title: 'Death Note', year: '2006-2007', rating: '9.0', poster: 'https://image.tmdb.org/t/p/w500/tC3PZMBFhwqR6j5eF0T2Hk8I5d5.jpg', ...generateDetails('Death Note', 'anime') },
-            { id: 'a3', type: 'anime', title: 'Fullmetal Alchemist: Brotherhood', year: '2009-2010', rating: '9.1', poster: 'https://image.tmdb.org/t/p/w500/5ZFZN2F4B3sRj0Y9xV0aFvM2dZ3.jpg', ...generateDetails('FMA: Brotherhood', 'anime') }
-        ];
-
-        const ITEMS_PER_PAGE = 8;
-
         function App() {
             const [search, setSearch] = React.useState('');
             const [activeTab, setActiveTab] = React.useState('movie');
             const [lang, setLang] = React.useState('en');
-            const [visibleCount, setVisibleCount] = React.useState(ITEMS_PER_PAGE);
+            const [page, setPage] = React.useState(1);
             const [isLoading, setIsLoading] = React.useState(false);
             const [selectedMedia, setSelectedMedia] = React.useState(null);
             const [showTrailer, setShowTrailer] = React.useState(false);
-            const [moviesData, setMoviesData] = React.useState(MOCK_DATA);
+            
+            // Data states
+            const [moviesData, setMoviesData] = React.useState([]);
+            const [seriesData, setSeriesData] = React.useState([]);
+            const [animeData, setAnimeData] = React.useState([]);
+            const [channelsData, setChannelsData] = React.useState([]);
             
             const t = dict[lang];
 
+            // Fetch Channels from Firebase (movies.json)
             React.useEffect(() => {
                 fetch('movies.json?t=' + new Date().getTime())
                     .then(res => res.json())
                     .then(data => {
-                        if (Array.isArray(data) && data.length > 0) {
-                            setMoviesData(data);
+                        if (Array.isArray(data)) {
+                            setChannelsData(data.filter(d => d.type === 'channel'));
                         }
                     })
-                    .catch(err => console.log('Using mock data...'));
+                    .catch(err => console.log('Failed to fetch channels'));
             }, []);
 
-            React.useEffect(() => {
-                lucide.createIcons();
-                document.body.dir = lang === 'ku' ? 'rtl' : 'ltr';
-            }, [lang, activeTab, search, visibleCount, selectedMedia, showTrailer, moviesData]);
+            // Fetch TMDB Data dynamically
+            const fetchTMDB = async (type, pageNum, query = '') => {
+                setIsLoading(true);
+                try {
+                    let endpoint = '';
+                    if (query) {
+                        endpoint = type === 'movie' ? \`/search/movie?query=\${query}&page=\${pageNum}\` : \`/search/tv?query=\${query}&page=\${pageNum}\`;
+                    } else {
+                        if (type === 'movie') endpoint = \`/trending/movie/week?page=\${pageNum}\`;
+                        else if (type === 'series') endpoint = \`/trending/tv/week?page=\${pageNum}\`;
+                        else if (type === 'anime') endpoint = \`/discover/tv?with_genres=16&page=\${pageNum}\`;
+                    }
+                    
+                    const res = await fetch(\`\${TMDB_BASE_URL}\${endpoint}&api_key=\${TMDB_API_KEY}\`);
+                    const data = await res.json();
+                    
+                    const formatted = data.results.filter(i => i.poster_path).map(item => ({
+                        id: item.id,
+                        type: type,
+                        title: item.title || item.name,
+                        year: (item.release_date || item.first_air_date || 'N/A').substring(0,4),
+                        fullDate: item.release_date || item.first_air_date || 'N/A',
+                        rating: (item.vote_average || 0).toFixed(1),
+                        poster: \`\${IMG_BASE_URL}\${item.poster_path}\`,
+                        backdrop: item.backdrop_path ? \`https://image.tmdb.org/t/p/original\${item.backdrop_path}\` : '',
+                        plot: item.overview || 'No description available.',
+                        language: (item.original_language || 'EN').toUpperCase()
+                    }));
+
+                    if (pageNum === 1) {
+                        if (type === 'movie') setMoviesData(formatted);
+                        else if (type === 'series') setSeriesData(formatted);
+                        else if (type === 'anime') setAnimeData(formatted);
+                    } else {
+                        if (type === 'movie') setMoviesData(p => [...p, ...formatted]);
+                        else if (type === 'series') setSeriesData(p => [...p, ...formatted]);
+                        else if (type === 'anime') setAnimeData(p => [...p, ...formatted]);
+                    }
+                } catch (err) {
+                    console.error("TMDB Fetch Error:", err);
+                }
+                setIsLoading(false);
+            };
 
             React.useEffect(() => {
-                setVisibleCount(ITEMS_PER_PAGE);
+                if (activeTab === 'channel') return;
+                
+                const timeoutId = setTimeout(() => {
+                    setPage(1);
+                    fetchTMDB(activeTab, 1, search);
+                }, 500);
+                
+                return () => clearTimeout(timeoutId);
             }, [activeTab, search]);
 
             React.useEffect(() => {
                 const handleScroll = () => {
                     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
-                        loadMore();
+                        if (!isLoading && activeTab !== 'channel') {
+                            const nextPage = page + 1;
+                            setPage(nextPage);
+                            fetchTMDB(activeTab, nextPage, search);
+                        }
                     }
                 };
-                
                 window.addEventListener('scroll', handleScroll);
                 return () => window.removeEventListener('scroll', handleScroll);
-            }, [visibleCount, activeTab, search]);
+            }, [isLoading, activeTab, page, search]);
 
-            const loadMore = () => {
-                const currentFiltered = moviesData.filter(item => {
-                    const matchesTab = item.type === activeTab;
-                    const matchesSearch = item.title.toLowerCase().includes(search.toLowerCase());
-                    return matchesTab && matchesSearch;
-                });
-                
-                if (visibleCount < currentFiltered.length && !isLoading) {
-                    setIsLoading(true);
-                    setTimeout(() => {
-                        setVisibleCount(prev => prev + ITEMS_PER_PAGE);
-                        setIsLoading(false);
-                    }, 600); 
-                }
-            };
+            React.useEffect(() => {
+                lucide.createIcons();
+                document.body.dir = lang === 'ku' ? 'rtl' : 'ltr';
+            }, [lang, activeTab, search, moviesData, seriesData, animeData, channelsData, selectedMedia, showTrailer]);
 
-            const toggleLang = () => {
-                setLang(prev => prev === 'en' ? 'ku' : 'en');
-            };
+            const toggleLang = () => setLang(prev => prev === 'en' ? 'ku' : 'en');
+            const closeMediaModal = () => { setSelectedMedia(null); setShowTrailer(false); };
 
-            const closeMediaModal = () => {
-                setSelectedMedia(null);
-                setShowTrailer(false); // Reset trailer state when closing modal
-            };
-
-            const allFilteredData = moviesData.filter(item => {
-                const matchesTab = item.type === activeTab;
-                const matchesSearch = item.title.toLowerCase().includes(search.toLowerCase());
-                return matchesTab && matchesSearch;
-            });
-            
-            const visibleData = allFilteredData.slice(0, visibleCount);
-            const hasMore = visibleCount < allFilteredData.length;
+            let currentData = [];
+            if (activeTab === 'movie') currentData = moviesData;
+            else if (activeTab === 'series') currentData = seriesData;
+            else if (activeTab === 'anime') currentData = animeData;
+            else if (activeTab === 'channel') {
+                currentData = channelsData.filter(item => item.title.toLowerCase().includes(search.toLowerCase()));
+            }
 
             return (
                 <div className="min-h-screen flex flex-col">
@@ -321,36 +320,36 @@
                         <div className="flex gap-8 border-b border-white/10 mb-8 font-semibold text-lg overflow-x-auto no-scrollbar">
                             <button 
                                 className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'movie' ? 'tab-active' : 'tab-inactive'}`}
-                                onClick={() => setActiveTab('movie')}
+                                onClick={() => { setActiveTab('movie'); setSearch(''); }}
                             >
                                 {t.movies}
                             </button>
                             <button 
                                 className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'series' ? 'tab-active' : 'tab-inactive'}`}
-                                onClick={() => setActiveTab('series')}
+                                onClick={() => { setActiveTab('series'); setSearch(''); }}
                             >
                                 {t.series}
                             </button>
                             <button 
                                 className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'anime' ? 'tab-active' : 'tab-inactive'}`}
-                                onClick={() => setActiveTab('anime')}
+                                onClick={() => { setActiveTab('anime'); setSearch(''); }}
                             >
                                 {t.anime}
                             </button>
                             <button 
                                 className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'channel' ? 'tab-active' : 'tab-inactive'}`}
-                                onClick={() => setActiveTab('channel')}
+                                onClick={() => { setActiveTab('channel'); setSearch(''); }}
                             >
                                 {t.channels}
                             </button>
                         </div>
 
                         <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
-                            <i data-lucide="trending-up" className="text-imdb w-8 h-8"></i>
-                            {search ? t.searchResults : `${t.topRated} ${activeTab === 'movie' ? t.movies : activeTab === 'series' ? t.series : t.anime}`}
+                            <i data-lucide={search ? "search" : "trending-up"} className="text-imdb w-8 h-8"></i>
+                            {search ? t.searchResults : `${t.topRated} ${activeTab === 'movie' ? t.movies : activeTab === 'series' ? t.series : activeTab === 'anime' ? t.anime : t.channels}`}
                         </h2>
 
-                        {allFilteredData.length === 0 ? (
+                        {currentData.length === 0 && !isLoading ? (
                             <div className="text-center py-20 text-red-400">
                                 <i data-lucide="alert-circle" className="w-16 h-16 mx-auto mb-4 opacity-50"></i>
                                 <h3 className="text-xl">{t.noResults}</h3>
@@ -358,8 +357,8 @@
                         ) : (
                             <>
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-8">
-                                    {visibleData.map((item) => (
-                                        <div key={item.id} onClick={() => setSelectedMedia(item)} className="movie-card bg-surface rounded-xl overflow-hidden border border-white/10 cursor-pointer">
+                                    {currentData.map((item, idx) => (
+                                        <div key={item.id + '-' + idx} onClick={() => setSelectedMedia(item)} className="movie-card bg-surface rounded-xl overflow-hidden border border-white/10 cursor-pointer">
                                             <div className="relative pt-[150%] bg-[#2a2a36]">
                                                 <img src={item.poster} alt={item.title} loading="lazy" className="absolute top-0 left-0 w-full h-full object-cover" />
                                                 <div className={`absolute top-3 ${lang === 'ku' ? 'left-3' : 'right-3'} bg-black/80 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 flex items-center gap-1 text-imdb font-bold text-sm`}>
@@ -378,7 +377,7 @@
                                     ))}
                                 </div>
                                 
-                                {hasMore && (
+                                {isLoading && (
                                     <div className="flex flex-col items-center justify-center py-8 text-imdb">
                                         <div className="spinner mb-2"></div>
                                         <span className="text-sm font-medium">{t.loading}</span>
@@ -391,14 +390,9 @@
                     {/* DETAILS MODAL */}
                     {selectedMedia && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                            {/* Backdrop */}
-                            <div 
-                                className="absolute inset-0 bg-black/80 backdrop-blur-md transition-opacity"
-                                onClick={closeMediaModal}
-                            ></div>
+                            <div className="absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity" onClick={closeMediaModal}></div>
                             
-                            {/* Modal Content */}
-                            <div className="relative w-full max-w-4xl min-h-[500px] max-h-[90vh] overflow-y-auto custom-scrollbar modal-glass rounded-2xl border border-white/10 shadow-2xl flex flex-col md:flex-row z-10 animate-[scaleIn_0.2s_ease-out]">
+                            <div className="relative w-full max-w-5xl min-h-[500px] max-h-[90vh] overflow-y-auto custom-scrollbar modal-glass rounded-2xl border border-white/10 shadow-2xl flex flex-col z-10 animate-[scaleIn_0.2s_ease-out]">
                                 
                                 <button 
                                     onClick={closeMediaModal}
@@ -407,95 +401,98 @@
                                     <i data-lucide="x" className="w-6 h-6"></i>
                                 </button>
 
-                                {/* CONDITIONAL RENDERING: TRAILER OR DETAILS */}
                                 {showTrailer ? (
-                                    <div className="w-full flex flex-col bg-black relative">
-                                        <button 
-                                            onClick={() => setShowTrailer(false)}
-                                            className={`absolute top-4 ${lang === 'ku' ? 'right-4' : 'left-4'} bg-black/50 hover:bg-imdb hover:text-black transition-colors rounded-full px-4 py-2 text-white z-20 flex items-center gap-2`}
-                                        >
-                                            <i data-lucide="arrow-left" className="w-5 h-5"></i>
-                                            {t.backToDetails}
-                                        </button>
-                                        <video 
-                                            id="video-player"
-                                            className="w-full h-full min-h-[500px] outline-none"
-                                            controls 
-                                            autoPlay
-                                            ref={(videoNode) => {
-                                                if (videoNode) {
-                                                    // Stream URL logic - fallback to a raw m3u8 stream for demo if none exists
-                                                    const streamSrc = selectedMedia.streamUrl || 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-                                                    
-                                                    if (Hls.isSupported()) {
-                                                        const hls = new Hls();
-                                                        hls.loadSource(streamSrc);
-                                                        hls.attachMedia(videoNode);
-                                                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                                                            videoNode.play();
-                                                        });
-                                                    } else if (videoNode.canPlayType('application/vnd.apple.mpegurl')) {
-                                                        videoNode.src = streamSrc;
-                                                        videoNode.addEventListener('loadedmetadata', function() {
-                                                            videoNode.play();
-                                                        });
-                                                    }
-                                                }
-                                            }}
-                                        ></video>
+                                    <div className="w-full h-[75vh] min-h-[500px] bg-black relative rounded-2xl overflow-hidden flex flex-col">
+                                        <div className="bg-black/90 p-4 flex items-center justify-between z-10 border-b border-white/10">
+                                            <button onClick={() => setShowTrailer(false)} className="flex items-center gap-2 hover:text-imdb transition-colors font-semibold">
+                                                <i data-lucide="arrow-left" className="w-5 h-5"></i>
+                                                {t.backToDetails}
+                                            </button>
+                                            <h3 className="font-bold text-lg truncate px-4">{selectedMedia.title}</h3>
+                                        </div>
+                                        
+                                        <div className="flex-1 w-full relative">
+                                            {selectedMedia.type === 'channel' ? (
+                                                <video 
+                                                    id="video-player"
+                                                    className="w-full h-full outline-none"
+                                                    controls 
+                                                    autoPlay
+                                                    ref={(videoNode) => {
+                                                        if (videoNode) {
+                                                            const streamSrc = selectedMedia.streamUrl;
+                                                            if (Hls.isSupported()) {
+                                                                const hls = new Hls();
+                                                                hls.loadSource(streamSrc);
+                                                                hls.attachMedia(videoNode);
+                                                                hls.on(Hls.Events.MANIFEST_PARSED, () => videoNode.play());
+                                                            } else if (videoNode.canPlayType('application/vnd.apple.mpegurl')) {
+                                                                videoNode.src = streamSrc;
+                                                                videoNode.addEventListener('loadedmetadata', () => videoNode.play());
+                                                            }
+                                                        }
+                                                    }}
+                                                ></video>
+                                            ) : (
+                                                <iframe 
+                                                    src={\`https://vidsrc.me/embed/\${selectedMedia.type === 'movie' ? 'movie' : 'tv'}?tmdb=\${selectedMedia.id}\`}
+                                                    className="w-full h-full absolute inset-0 border-0"
+                                                    allowFullScreen
+                                                    allow="autoplay; encrypted-media"
+                                                ></iframe>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
-                                    <>
-                                        <div className="w-full md:w-1/3 relative">
-                                            <img src={selectedMedia.poster} alt={selectedMedia.title} className="w-full h-full object-cover min-h-[300px]" />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] to-transparent md:hidden"></div>
+                                    <div className="flex flex-col md:flex-row w-full relative">
+                                        {/* Backdrop blurred background */}
+                                        {selectedMedia.backdrop && (
+                                            <div className="absolute inset-0 z-0 opacity-20">
+                                                <img src={selectedMedia.backdrop} className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent"></div>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="w-full md:w-1/3 p-6 z-10 flex justify-center items-start">
+                                            <img src={selectedMedia.poster} alt={selectedMedia.title} className="w-full max-w-[300px] rounded-xl shadow-2xl border border-white/20" />
                                         </div>
 
-                                        <div className="w-full md:w-2/3 p-8 flex flex-col justify-center">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <span className="bg-imdb text-black font-bold px-3 py-1 rounded-md text-sm">{selectedMedia.year}</span>
-                                                <div className="flex items-center gap-1 text-imdb font-bold text-lg">
+                                        <div className="w-full md:w-2/3 p-6 md:p-10 z-10 flex flex-col justify-center">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <span className="bg-imdb text-black font-extrabold px-3 py-1 rounded-md text-sm">{selectedMedia.year}</span>
+                                                <div className="flex items-center gap-1 text-imdb font-bold text-lg bg-black/50 px-3 py-1 rounded-md">
                                                     <i data-lucide="star" className="w-5 h-5 fill-imdb"></i>
                                                     {selectedMedia.rating} / 10
                                                 </div>
+                                                <span className="border border-white/20 uppercase text-xs font-bold px-3 py-1 rounded-md">{selectedMedia.type}</span>
                                             </div>
                                             
-                                            <h2 className="text-4xl font-extrabold mb-4">{selectedMedia.title}</h2>
+                                            <h2 className="text-4xl md:text-5xl font-black mb-6 leading-tight drop-shadow-lg">{selectedMedia.title}</h2>
                                             
-                                            <div className="flex flex-wrap gap-2 mb-6">
-                                                {selectedMedia.genre.split(',').map((g, i) => (
-                                                    <span key={i} className="border border-white/20 rounded-full px-3 py-1 text-sm text-gray-300">{g.trim()}</span>
-                                                ))}
-                                            </div>
-                                            
-                                            <p className="text-gray-300 text-lg leading-relaxed mb-8">
+                                            <p className="text-gray-200 text-lg leading-relaxed mb-8 bg-black/40 p-4 rounded-xl backdrop-blur-sm border border-white/5">
                                                 {selectedMedia.plot}
                                             </p>
                                             
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+                                            <div className="grid grid-cols-2 gap-6 text-sm mb-8 bg-black/30 p-4 rounded-xl">
                                                 <div>
-                                                    <h4 className="text-gray-500 uppercase font-semibold mb-1">{t.director}</h4>
-                                                    <p className="font-medium text-white">{selectedMedia.director}</p>
+                                                    <h4 className="text-gray-400 uppercase font-bold mb-1 tracking-wider text-xs">{t.runtime}</h4>
+                                                    <p className="font-medium text-white">{selectedMedia.fullDate || 'Live'}</p>
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-gray-500 uppercase font-semibold mb-1">{t.runtime}</h4>
-                                                    <p className="font-medium text-white">{selectedMedia.runtime}</p>
-                                                </div>
-                                                <div className="sm:col-span-2">
-                                                    <h4 className="text-gray-500 uppercase font-semibold mb-1">{t.cast}</h4>
-                                                    <p className="font-medium text-white">{selectedMedia.cast}</p>
+                                                    <h4 className="text-gray-400 uppercase font-bold mb-1 tracking-wider text-xs">{t.cast}</h4>
+                                                    <p className="font-medium text-white">{selectedMedia.language || 'Multiple'}</p>
                                                 </div>
                                             </div>
 
                                             <button 
                                                 onClick={() => setShowTrailer(true)}
-                                                className="mt-8 bg-imdb text-black font-extrabold py-4 px-10 rounded-xl flex items-center justify-center gap-3 hover:bg-yellow-400 transition-all hover:scale-105 w-full shadow-lg shadow-imdb/20 text-xl"
+                                                className="bg-imdb text-black font-extrabold py-4 px-10 rounded-xl flex items-center justify-center gap-3 hover:bg-yellow-400 transition-all hover:scale-105 w-full md:w-auto shadow-[0_0_20px_rgba(245,197,24,0.4)] text-xl"
                                             >
                                                 <i data-lucide="play-circle" className="w-8 h-8 fill-black"></i>
                                                 {t.trailer}
                                             </button>
                                         </div>
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         </div>
