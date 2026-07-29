@@ -6,32 +6,10 @@ export async function onRequest(context) {
     const season = url.searchParams.get('season') || '1';
     const episode = url.searchParams.get('episode') || '1';
     
-    let vidUrl = `https://vidlink.pro/${type}/${id}?primaryColor=f5c518&secondaryColor=1a1a1a&iconColor=f5c518&autoplay=true`;
-    if (type === 'tv') {
-        vidUrl = `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=f5c518&secondaryColor=1a1a1a&iconColor=f5c518&autoplay=true`;
+    let targetUrl = 'https://movie-app-cloudflare.sarko-akram333.workers.dev/embed/movie/' + id;
+    if (type === 'tv' || type === 'series') {
+        targetUrl = 'https://movie-app-cloudflare.sarko-akram333.workers.dev/embed/tv/' + id + '/' + season + '/' + episode;
     }
-
-    const response = await fetch(vidUrl, {
-        headers: {
-            'User-Agent': request.headers.get('User-Agent') || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-    });
-
-    let html = await response.text();
     
-    // Inject base href so relative assets load from vidlink
-    // Inject script to kill window.open (blocking all popup ads natively)
-    html = html.replace('<head>', `<head>
-        <base href="https://vidlink.pro">
-        <script>
-            window.open = function() { return null; };
-            Object.freeze(window.open);
-        </script>`);
-
-    return new Response(html, {
-        headers: { 
-            'content-type': 'text/html;charset=UTF-8',
-            'Access-Control-Allow-Origin': '*'
-        }
-    });
+    return Response.redirect(targetUrl, 301);
 }
