@@ -338,22 +338,37 @@
 
             const toggleLang = () => setLang(prev => prev === 'en' ? 'ku' : 'en');
             const closeMediaModal = () => { setSelectedMedia(null); setShowTrailer(false); };
+            const [useImdb, setUseImdb] = React.useState(false);
+
             const handleMediaClick = async (item) => {
-                setSelectedMedia({...item, loadingStream: true});
+                setSelectedMedia({...item, loadingStream: true, imdb_id: null});
                 setShowTrailer(true);
+                setUseImdb(false);
                 
-                if (item.type === 'series' || item.type === 'anime') {
-                    try {
-                        const res = await fetch(`${TMDB_BASE_URL}/tv/${item.id}?api_key=${TMDB_API_KEY}`);
+                try {
+                    if (item.type === 'series' || item.type === 'anime') {
+                        const res = await fetch(`${TMDB_BASE_URL}/tv/${item.id}?api_key=${TMDB_API_KEY}&external_source=imdb_id`);
                         const data = await res.json();
                         const validSeasons = data.seasons ? data.seasons.filter(s => s.season_number > 0) : [];
                         setTvDetails(validSeasons);
                         setSelectedSeason(validSeasons.length > 0 ? validSeasons[0].season_number : 1);
                         setSelectedEpisode(1);
-                    } catch(e) {}
-                } else {
-                    setTvDetails(null);
-                }
+                        
+                        // Fetch external ids for series
+                        const extRes = await fetch(`${TMDB_BASE_URL}/tv/${item.id}/external_ids?api_key=${TMDB_API_KEY}`);
+                        const extData = await extRes.json();
+                        if (extData.imdb_id) {
+                            setSelectedMedia(prev => ({...prev, imdb_id: extData.imdb_id}));
+                        }
+                    } else {
+                        setTvDetails(null);
+                        const res = await fetch(`${TMDB_BASE_URL}/movie/${item.id}?api_key=${TMDB_API_KEY}`);
+                        const data = await res.json();
+                        if (data.imdb_id) {
+                            setSelectedMedia(prev => ({...prev, imdb_id: data.imdb_id}));
+                        }
+                    }
+                } catch(e) {}
 
                 setTimeout(() => {
                     setSelectedMedia(prev => ({...prev, loadingStream: false}));
@@ -363,7 +378,8 @@
             const getIframeSrc = () => {
                 if (!selectedMedia) return '';
                 const isTv = selectedMedia.type === 'series' || selectedMedia.type === 'anime';
-                const base = isTv ? window.atob('aHR0cHM6Ly92aWRsaW5rLnByby90di8=') + selectedMedia.id + '/' + selectedSeason + '/' + selectedEpisode : window.atob('aHR0cHM6Ly92aWRsaW5rLnByby9tb3ZpZS8=') + selectedMedia.id;
+                const idToUse = (useImdb && selectedMedia.imdb_id) ? selectedMedia.imdb_id : selectedMedia.id;
+                const base = isTv ? window.atob('aHR0cHM6Ly92aWRsaW5rLnByby90di8=') + idToUse + '/' + selectedSeason + '/' + selectedEpisode : window.atob('aHR0cHM6Ly92aWRsaW5rLnByby9tb3ZpZS8=') + idToUse;
                 return base + '?primaryColor=f5c518&secondaryColor=1a1a1a&iconColor=f5c518&autoplay=false';
             };
 
@@ -473,31 +489,42 @@
                                                 <h3 className="font-bold text-lg truncate">{selectedMedia.title}</h3>
                                             </div>
                                             
-                                            {tvDetails && (
-                                                <div className="flex items-center gap-3 w-full md:w-auto">
-                                                    <select 
-                                                        className="bg-[#1a1a24] border border-white/20 text-white text-sm rounded-lg focus:ring-imdb focus:border-imdb block w-full p-2.5"
-                                                        value={selectedSeason}
-                                                        onChange={(e) => {
-                                                            setSelectedSeason(Number(e.target.value));
-                                                            setSelectedEpisode(1);
-                                                        }}
+                                            <div className="flex items-center gap-3 w-full md:w-auto">
+                                                {selectedMedia.imdb_id && (
+                                                    <button 
+                                                        onClick={() => setUseImdb(!useImdb)}
+                                                        className={`text-sm px-3 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 ${useImdb ? 'bg-imdb text-black' : 'bg-[#1a1a24] text-white hover:bg-white/10 border border-white/20'}`}
                                                     >
-                                                        {tvDetails.map(s => (
-                                                            <option key={s.season_number} value={s.season_number}>Season {s.season_number}</option>
-                                                        ))}
-                                                    </select>
-                                                    <select 
-                                                        className="bg-[#1a1a24] border border-white/20 text-white text-sm rounded-lg focus:ring-imdb focus:border-imdb block w-full p-2.5"
-                                                        value={selectedEpisode}
-                                                        onChange={(e) => setSelectedEpisode(Number(e.target.value))}
-                                                    >
-                                                        {Array.from({length: (tvDetails.find(s => s.season_number === selectedSeason) || {episode_count: 1}).episode_count}, (_, i) => i + 1).map(ep => (
-                                                            <option key={ep} value={ep}>Episode {ep}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            )}
+                                                        <i data-lucide="refresh-cw" className={`w-4 h-4 ${useImdb ? 'animate-spin' : ''}`}></i>
+                                                        {lang === 'ku' ? 'سێرڤەری یەدەگ' : 'Backup Server'}
+                                                    </button>
+                                                )}
+                                                {tvDetails && (
+                                                    <>
+                                                        <select 
+                                                            className="bg-[#1a1a24] border border-white/20 text-white text-sm rounded-lg focus:ring-imdb focus:border-imdb block w-full p-2.5"
+                                                            value={selectedSeason}
+                                                            onChange={(e) => {
+                                                                setSelectedSeason(Number(e.target.value));
+                                                                setSelectedEpisode(1);
+                                                            }}
+                                                        >
+                                                            {tvDetails.map(s => (
+                                                                <option key={s.season_number} value={s.season_number}>Season {s.season_number}</option>
+                                                            ))}
+                                                        </select>
+                                                        <select 
+                                                            className="bg-[#1a1a24] border border-white/20 text-white text-sm rounded-lg focus:ring-imdb focus:border-imdb block w-full p-2.5"
+                                                            value={selectedEpisode}
+                                                            onChange={(e) => setSelectedEpisode(Number(e.target.value))}
+                                                        >
+                                                            {Array.from({length: (tvDetails.find(s => s.season_number === selectedSeason) || {episode_count: 1}).episode_count}, (_, i) => i + 1).map(ep => (
+                                                                <option key={ep} value={ep}>Episode {ep}</option>
+                                                            ))}
+                                                        </select>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="aspect-video bg-black rounded-lg overflow-hidden relative shadow-2xl border border-white/10 group flex-1 w-full">
                                             {selectedMedia.loadingStream ? (
