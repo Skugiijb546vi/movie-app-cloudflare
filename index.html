@@ -338,7 +338,7 @@
 
             const toggleLang = () => setLang(prev => prev === 'en' ? 'ku' : 'en');
             const closeMediaModal = () => { setSelectedMedia(null); setShowTrailer(false); };
-            const [useVidzee, setUseVidzee] = React.useState(false);
+            const [useVidzee, setUseVidzee] = React.useState(true);
 
             const handleMediaClick = async (item) => {
                 setSelectedMedia({...item, loadingStream: true, imdb_id: null});
