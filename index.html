@@ -442,7 +442,7 @@
                                                 ) : (
                                                     <>
                                                         <iframe 
-                                                            src={`/api/embed?type=${selectedMedia.type === 'movie' ? 'movie' : 'tv'}&id=${selectedMedia.id}`} 
+                                                            src={`https://vidlink.pro/${selectedMedia.type === 'movie' ? 'movie' : 'tv'}/${selectedMedia.id}?primaryColor=f5c518&secondaryColor=1a1a1a&iconColor=f5c518&autoplay=false`} 
                                                             className="w-full h-full absolute inset-0 border-0" 
                                                             allowFullScreen 
                                                             allow="autoplay; encrypted-media"
@@ -450,7 +450,7 @@
                                                         {/* Custom Branding Overlay to hide third-party feeling */}
                                                         <div className="absolute top-0 left-0 w-full p-4 pointer-events-none bg-gradient-to-b from-black/80 to-transparent z-10 flex justify-between items-start">
                                                             <div className="flex items-center gap-2 opacity-80">
-                                                                <div className="bg-imdb text-black px-2 py-0.5 rounded font-black text-xs uppercase tracking-wider">LO's Player</div>
+                                                                <div className="bg-imdb text-black px-2 py-0.5 rounded font-black text-xs uppercase tracking-wider">sebar tv player</div>
                                                                 <span className="text-white/70 text-xs font-semibold drop-shadow-md">{selectedMedia.title}</span>
                                                             </div>
                                                         </div>
