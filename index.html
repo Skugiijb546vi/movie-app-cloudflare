@@ -338,12 +338,12 @@
 
             const toggleLang = () => setLang(prev => prev === 'en' ? 'ku' : 'en');
             const closeMediaModal = () => { setSelectedMedia(null); setShowTrailer(false); };
-            const [useImdb, setUseImdb] = React.useState(false);
+            const [useVidzee, setUseVidzee] = React.useState(false);
 
             const handleMediaClick = async (item) => {
                 setSelectedMedia({...item, loadingStream: true, imdb_id: null});
                 setShowTrailer(true);
-                setUseImdb(false);
+                setUseVidzee(false);
                 
                 try {
                     if (item.type === 'series' || item.type === 'anime') {
@@ -353,20 +353,8 @@
                         setTvDetails(validSeasons);
                         setSelectedSeason(validSeasons.length > 0 ? validSeasons[0].season_number : 1);
                         setSelectedEpisode(1);
-                        
-                        // Fetch external ids for series
-                        const extRes = await fetch(`${TMDB_BASE_URL}/tv/${item.id}/external_ids?api_key=${TMDB_API_KEY}`);
-                        const extData = await extRes.json();
-                        if (extData.imdb_id) {
-                            setSelectedMedia(prev => ({...prev, imdb_id: extData.imdb_id}));
-                        }
                     } else {
                         setTvDetails(null);
-                        const res = await fetch(`${TMDB_BASE_URL}/movie/${item.id}?api_key=${TMDB_API_KEY}`);
-                        const data = await res.json();
-                        if (data.imdb_id) {
-                            setSelectedMedia(prev => ({...prev, imdb_id: data.imdb_id}));
-                        }
                     }
                 } catch(e) {}
 
@@ -378,8 +366,12 @@
             const getIframeSrc = () => {
                 if (!selectedMedia) return '';
                 const isTv = selectedMedia.type === 'series' || selectedMedia.type === 'anime';
-                const idToUse = (useImdb && selectedMedia.imdb_id) ? selectedMedia.imdb_id : selectedMedia.id;
-                const base = isTv ? window.atob('aHR0cHM6Ly92aWRsaW5rLnByby90di8=') + idToUse + '/' + selectedSeason + '/' + selectedEpisode : window.atob('aHR0cHM6Ly92aWRsaW5rLnByby9tb3ZpZS8=') + idToUse;
+                if (useVidzee) {
+                    return isTv 
+                        ? `https://player.vidzee.wtf/embed/tv/${selectedMedia.id}/${selectedSeason}/${selectedEpisode}`
+                        : `https://player.vidzee.wtf/embed/movie/${selectedMedia.id}`;
+                }
+                const base = isTv ? window.atob('aHR0cHM6Ly92aWRsaW5rLnByby90di8=') + selectedMedia.id + '/' + selectedSeason + '/' + selectedEpisode : window.atob('aHR0cHM6Ly92aWRsaW5rLnByby9tb3ZpZS8=') + selectedMedia.id;
                 return base + '?primaryColor=f5c518&secondaryColor=1a1a1a&iconColor=f5c518&autoplay=false';
             };
 
@@ -490,15 +482,13 @@
                                             </div>
                                             
                                             <div className="flex items-center gap-3 w-full md:w-auto">
-                                                {selectedMedia.imdb_id && (
-                                                    <button 
-                                                        onClick={() => setUseImdb(!useImdb)}
-                                                        className={`text-sm px-3 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 ${useImdb ? 'bg-imdb text-black' : 'bg-[#1a1a24] text-white hover:bg-white/10 border border-white/20'}`}
-                                                    >
-                                                        <i data-lucide="refresh-cw" className={`w-4 h-4 ${useImdb ? 'animate-spin' : ''}`}></i>
-                                                        {lang === 'ku' ? 'سێرڤەری یەدەگ' : 'Backup Server'}
-                                                    </button>
-                                                )}
+                                                <button 
+                                                    onClick={() => setUseVidzee(!useVidzee)}
+                                                    className={`text-sm px-3 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 ${useVidzee ? 'bg-imdb text-black' : 'bg-[#1a1a24] text-white hover:bg-white/10 border border-white/20'}`}
+                                                >
+                                                    <i data-lucide="refresh-cw" className={`w-4 h-4 ${useVidzee ? 'animate-spin' : ''}`}></i>
+                                                    {lang === 'ku' ? 'سێرڤەری یەدەگ' : 'Backup Server'}
+                                                </button>
                                                 {tvDetails && (
                                                     <>
                                                         <select 
