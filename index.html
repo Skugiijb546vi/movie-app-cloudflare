@@ -366,16 +366,10 @@
             const getIframeSrc = () => {
                 if (!selectedMedia) return '';
                 const isTv = selectedMedia.type === 'series' || selectedMedia.type === 'anime';
-                if (useVidzee) {
-                    return isTv 
-                        ? `https://movie-app-cloudflare.sarko-akram333.workers.dev/embed/tv/${selectedMedia.id}/${selectedSeason}/${selectedEpisode}`
-                        : `https://movie-app-cloudflare.sarko-akram333.workers.dev/embed/movie/${selectedMedia.id}`;
-                }
-                const proxyUrl = '/api/embed';
                 if (isTv) {
-                    return `${proxyUrl}?type=tv&id=${selectedMedia.id}&season=${selectedSeason}&episode=${selectedEpisode}`;
+                    return `https://movie-app-cloudflare.sarko-akram333.workers.dev/embed/tv/${selectedMedia.id}/${selectedSeason}/${selectedEpisode}`;
                 } else {
-                    return `${proxyUrl}?type=movie&id=${selectedMedia.id}`;
+                    return `https://movie-app-cloudflare.sarko-akram333.workers.dev/embed/movie/${selectedMedia.id}`;
                 }
             };
 
