@@ -371,8 +371,12 @@
                         ? `https://player.vidzee.wtf/embed/tv/${selectedMedia.id}/${selectedSeason}/${selectedEpisode}`
                         : `https://player.vidzee.wtf/embed/movie/${selectedMedia.id}`;
                 }
-                const base = isTv ? window.atob('aHR0cHM6Ly92aWRsaW5rLnByby90di8=') + selectedMedia.id + '/' + selectedSeason + '/' + selectedEpisode : window.atob('aHR0cHM6Ly92aWRsaW5rLnByby9tb3ZpZS8=') + selectedMedia.id;
-                return base + '?primaryColor=f5c518&secondaryColor=1a1a1a&iconColor=f5c518&autoplay=false';
+                const proxyUrl = '/api/embed';
+                if (isTv) {
+                    return `${proxyUrl}?type=tv&id=${selectedMedia.id}&season=${selectedSeason}&episode=${selectedEpisode}`;
+                } else {
+                    return `${proxyUrl}?type=movie&id=${selectedMedia.id}`;
+                }
             };
 
             let currentData = [];
