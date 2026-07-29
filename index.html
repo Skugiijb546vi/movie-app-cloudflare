@@ -286,27 +286,25 @@
                 let hls;
                 let player;
                 if (showTrailer && videoRef.current) {
-                    const isRaw = selectedMedia.type === 'channel' || (selectedMedia.streamData && selectedMedia.streamData.is_raw_m3u8);
-                    if (isRaw) {
-                        const videoSrc = selectedMedia.type === 'channel' ? selectedMedia.url : selectedMedia.streamData.stream_url;
+                    if (selectedMedia.type === 'channel') {
                         player = new Plyr(videoRef.current, {
                             controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
                             quality: { default: 720, options: [4320, 2880, 2160, 1440, 1080, 720, 576, 480, 360, 240] }
                         });
-                        if (Hls.isSupported() && videoSrc.includes('.m3u8')) {
+                        if (Hls.isSupported() && selectedMedia.url.includes('.m3u8')) {
                             hls = new Hls();
-                            hls.loadSource(videoSrc);
+                            hls.loadSource(selectedMedia.url);
                             hls.attachMedia(videoRef.current);
                             hls.on(Hls.Events.MANIFEST_PARSED, function() {
                                 videoRef.current.play().catch(e => console.log("Autoplay blocked:", e));
                             });
                         } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-                            videoRef.current.src = videoSrc;
+                            videoRef.current.src = selectedMedia.url;
                             videoRef.current.addEventListener('loadedmetadata', function() {
                                 videoRef.current.play().catch(e => console.log("Autoplay blocked:", e));
                             });
                         } else {
-                            videoRef.current.src = videoSrc;
+                            videoRef.current.src = selectedMedia.url;
                             videoRef.current.play().catch(e => console.log("Autoplay blocked:", e));
                         }
                     }
@@ -319,16 +317,13 @@
 
             const toggleLang = () => setLang(prev => prev === 'en' ? 'ku' : 'en');
             const closeMediaModal = () => { setSelectedMedia(null); setShowTrailer(false); };
-            const handleMediaClick = async (item) => {
+            const handleMediaClick = (item) => {
                 setSelectedMedia({...item, loadingStream: true});
                 setShowTrailer(true);
-                try {
-                    const res = await fetch(`/api/stream?tmdb=${item.id}&type=${item.type}`);
-                    const data = await res.json();
-                    setSelectedMedia({...item, loadingStream: false, streamData: data});
-                } catch (e) {
-                    setSelectedMedia({...item, loadingStream: false, streamData: { is_raw_m3u8: false, stream_url: `https://vidsrc.me/embed/${item.type}?tmdb=${item.id}` }});
-                }
+                // Simulate a fast loading state to transition to the seamless embed
+                setTimeout(() => {
+                    setSelectedMedia({...item, loadingStream: false});
+                }, 800);
             };
 
             let currentData = [];
@@ -439,13 +434,18 @@
                                             {selectedMedia.loadingStream ? (
                                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-50">
                                                     <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                                                    <div className="text-yellow-400 text-lg font-bold animate-pulse">Bypassing Vidsrc Player...</div>
+                                                    <div className="text-yellow-400 text-lg font-bold animate-pulse">Initializing Custom Player...</div>
                                                 </div>
                                             ) : (
-                                                (selectedMedia.type === 'channel' || (selectedMedia.streamData && selectedMedia.streamData.is_raw_m3u8)) ? (
+                                                selectedMedia.type === 'channel' ? (
                                                     <video ref={videoRef} className="w-full h-full absolute inset-0 object-cover" controls autoPlay crossOrigin="anonymous"></video>
                                                 ) : (
-                                                    <iframe src={selectedMedia.streamData ? selectedMedia.streamData.stream_url : `https://vidsrc.me/embed/${selectedMedia.type === 'movie' ? 'movie' : 'tv'}?tmdb=${selectedMedia.id}`} className="w-full h-full absolute inset-0 border-0" allowFullScreen allow="autoplay; encrypted-media"></iframe>
+                                                    <iframe 
+                                                        src={`https://vidlink.pro/${selectedMedia.type === 'movie' ? 'movie' : 'tv'}/${selectedMedia.id}?primaryColor=f5c518&secondaryColor=1a1a1a&iconColor=f5c518&autoplay=false`} 
+                                                        className="w-full h-full absolute inset-0 border-0" 
+                                                        allowFullScreen 
+                                                        allow="autoplay; encrypted-media"
+                                                    ></iframe>
                                                 )
                                             )}
                                         </div>
