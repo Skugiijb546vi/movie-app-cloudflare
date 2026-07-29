@@ -208,14 +208,14 @@
                 try {
                     let endpoint = '';
                     if (query) {
-                        endpoint = type === 'movie' ? \`/search/movie?query=\${query}&page=\${pageNum}\` : \`/search/tv?query=\${query}&page=\${pageNum}\`;
+                        endpoint = type === 'movie' ? `/search/movie?query=${query}&page=${pageNum}` : `/search/tv?query=${query}&page=${pageNum}`;
                     } else {
-                        if (type === 'movie') endpoint = \`/trending/movie/week?page=\${pageNum}\`;
-                        else if (type === 'series') endpoint = \`/trending/tv/week?page=\${pageNum}\`;
-                        else if (type === 'anime') endpoint = \`/discover/tv?with_genres=16&page=\${pageNum}\`;
+                        if (type === 'movie') endpoint = `/trending/movie/week?page=${pageNum}`;
+                        else if (type === 'series') endpoint = `/trending/tv/week?page=${pageNum}`;
+                        else if (type === 'anime') endpoint = `/discover/tv?with_genres=16&page=${pageNum}`;
                     }
                     
-                    const res = await fetch(\`\${TMDB_BASE_URL}\${endpoint}&api_key=\${TMDB_API_KEY}\`);
+                    const res = await fetch(`${TMDB_BASE_URL}${endpoint}&api_key=${TMDB_API_KEY}`);
                     const data = await res.json();
                     
                     const formatted = data.results.filter(i => i.poster_path).map(item => ({
@@ -225,8 +225,8 @@
                         year: (item.release_date || item.first_air_date || 'N/A').substring(0,4),
                         fullDate: item.release_date || item.first_air_date || 'N/A',
                         rating: (item.vote_average || 0).toFixed(1),
-                        poster: \`\${IMG_BASE_URL}\${item.poster_path}\`,
-                        backdrop: item.backdrop_path ? \`https://image.tmdb.org/t/p/original\${item.backdrop_path}\` : '',
+                        poster: `${IMG_BASE_URL}${item.poster_path}`,
+                        backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : '',
                         plot: item.overview || 'No description available.',
                         language: (item.original_language || 'EN').toUpperCase()
                     }));
@@ -435,7 +435,7 @@
                                                 ></video>
                                             ) : (
                                                 <iframe 
-                                                    src={\`https://vidsrc.me/embed/\${selectedMedia.type === 'movie' ? 'movie' : 'tv'}?tmdb=\${selectedMedia.id}\`}
+                                                    src={`https://vidsrc.me/embed/${selectedMedia.type === 'movie' ? 'movie' : 'tv'}?tmdb=${selectedMedia.id}`}
                                                     className="w-full h-full absolute inset-0 border-0"
                                                     allowFullScreen
                                                     allow="autoplay; encrypted-media"
