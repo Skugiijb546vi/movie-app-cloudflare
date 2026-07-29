@@ -343,7 +343,7 @@
             const handleMediaClick = async (item) => {
                 setSelectedMedia({...item, loadingStream: true, imdb_id: null});
                 setShowTrailer(true);
-                setUseVidzee(false);
+                setUseVidzee(true);
                 
                 try {
                     if (item.type === 'series' || item.type === 'anime') {
