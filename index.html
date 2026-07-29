@@ -17,6 +17,11 @@
     
     <!-- HLS.js for raw stream playing (Channels only) -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <!-- Plyr Video Player -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -182,6 +187,8 @@
             const [selectedMedia, setSelectedMedia] = React.useState(null);
             const [showTrailer, setShowTrailer] = React.useState(false);
             
+            const videoRef = React.useRef(null);
+            
             // Data states
             const [moviesData, setMoviesData] = React.useState([]);
             const [seriesData, setSeriesData] = React.useState([]);
@@ -190,7 +197,6 @@
             
             const t = dict[lang];
 
-            // Fetch Channels from Firebase (movies.json)
             React.useEffect(() => {
                 fetch('movies.json?t=' + new Date().getTime())
                     .then(res => res.json())
@@ -202,7 +208,6 @@
                     .catch(err => console.log('Failed to fetch channels'));
             }, []);
 
-            // Fetch TMDB Data dynamically
             const fetchTMDB = async (type, pageNum, query = '') => {
                 setIsLoading(true);
                 try {
@@ -228,7 +233,8 @@
                         poster: `${IMG_BASE_URL}${item.poster_path}`,
                         backdrop: item.backdrop_path ? `https://image.tmdb.org/t/p/original${item.backdrop_path}` : '',
                         plot: item.overview || 'No description available.',
-                        language: (item.original_language || 'EN').toUpperCase()
+                        language: (item.original_language || 'EN').toUpperCase(),
+                        url: item.url
                     }));
 
                     if (pageNum === 1) {
@@ -276,8 +282,54 @@
                 document.body.dir = lang === 'ku' ? 'rtl' : 'ltr';
             }, [lang, activeTab, search, moviesData, seriesData, animeData, channelsData, selectedMedia, showTrailer]);
 
+            React.useEffect(() => {
+                let hls;
+                let player;
+                if (showTrailer && videoRef.current) {
+                    const isRaw = selectedMedia.type === 'channel' || (selectedMedia.streamData && selectedMedia.streamData.is_raw_m3u8);
+                    if (isRaw) {
+                        const videoSrc = selectedMedia.type === 'channel' ? selectedMedia.url : selectedMedia.streamData.stream_url;
+                        player = new Plyr(videoRef.current, {
+                            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                            quality: { default: 720, options: [4320, 2880, 2160, 1440, 1080, 720, 576, 480, 360, 240] }
+                        });
+                        if (Hls.isSupported() && videoSrc.includes('.m3u8')) {
+                            hls = new Hls();
+                            hls.loadSource(videoSrc);
+                            hls.attachMedia(videoRef.current);
+                            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                                videoRef.current.play().catch(e => console.log("Autoplay blocked:", e));
+                            });
+                        } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+                            videoRef.current.src = videoSrc;
+                            videoRef.current.addEventListener('loadedmetadata', function() {
+                                videoRef.current.play().catch(e => console.log("Autoplay blocked:", e));
+                            });
+                        } else {
+                            videoRef.current.src = videoSrc;
+                            videoRef.current.play().catch(e => console.log("Autoplay blocked:", e));
+                        }
+                    }
+                }
+                return () => {
+                    if (hls) hls.destroy();
+                    if (player) player.destroy();
+                };
+            }, [showTrailer, selectedMedia]);
+
             const toggleLang = () => setLang(prev => prev === 'en' ? 'ku' : 'en');
             const closeMediaModal = () => { setSelectedMedia(null); setShowTrailer(false); };
+            const handleMediaClick = async (item) => {
+                setSelectedMedia({...item, loadingStream: true});
+                setShowTrailer(true);
+                try {
+                    const res = await fetch(`/api/stream?tmdb=${item.id}&type=${item.type}`);
+                    const data = await res.json();
+                    setSelectedMedia({...item, loadingStream: false, streamData: data});
+                } catch (e) {
+                    setSelectedMedia({...item, loadingStream: false, streamData: { is_raw_m3u8: false, stream_url: `https://vidsrc.me/embed/${item.type}?tmdb=${item.id}` }});
+                }
+            };
 
             let currentData = [];
             if (activeTab === 'movie') currentData = moviesData;
@@ -318,30 +370,10 @@
 
                     <main className="flex-1 w-full max-w-7xl mx-auto p-8 relative">
                         <div className="flex gap-8 border-b border-white/10 mb-8 font-semibold text-lg overflow-x-auto no-scrollbar">
-                            <button 
-                                className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'movie' ? 'tab-active' : 'tab-inactive'}`}
-                                onClick={() => { setActiveTab('movie'); setSearch(''); }}
-                            >
-                                {t.movies}
-                            </button>
-                            <button 
-                                className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'series' ? 'tab-active' : 'tab-inactive'}`}
-                                onClick={() => { setActiveTab('series'); setSearch(''); }}
-                            >
-                                {t.series}
-                            </button>
-                            <button 
-                                className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'anime' ? 'tab-active' : 'tab-inactive'}`}
-                                onClick={() => { setActiveTab('anime'); setSearch(''); }}
-                            >
-                                {t.anime}
-                            </button>
-                            <button 
-                                className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'channel' ? 'tab-active' : 'tab-inactive'}`}
-                                onClick={() => { setActiveTab('channel'); setSearch(''); }}
-                            >
-                                {t.channels}
-                            </button>
+                            <button className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'movie' ? 'tab-active' : 'tab-inactive'}`} onClick={() => { setActiveTab('movie'); setSearch(''); }}>{t.movies}</button>
+                            <button className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'series' ? 'tab-active' : 'tab-inactive'}`} onClick={() => { setActiveTab('series'); setSearch(''); }}>{t.series}</button>
+                            <button className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'anime' ? 'tab-active' : 'tab-inactive'}`} onClick={() => { setActiveTab('anime'); setSearch(''); }}>{t.anime}</button>
+                            <button className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'channel' ? 'tab-active' : 'tab-inactive'}`} onClick={() => { setActiveTab('channel'); setSearch(''); }}>{t.channels}</button>
                         </div>
 
                         <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
@@ -358,7 +390,7 @@
                             <>
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-8">
                                     {currentData.map((item, idx) => (
-                                        <div key={item.id + '-' + idx} onClick={() => setSelectedMedia(item)} className="movie-card bg-surface rounded-xl overflow-hidden border border-white/10 cursor-pointer">
+                                        <div key={item.id + '-' + idx} onClick={() => handleMediaClick(item)} className="movie-card bg-surface rounded-xl overflow-hidden border border-white/10 cursor-pointer">
                                             <div className="relative pt-[150%] bg-[#2a2a36]">
                                                 <img src={item.poster} alt={item.title} loading="lazy" className="absolute top-0 left-0 w-full h-full object-cover" />
                                                 <div className={`absolute top-3 ${lang === 'ku' ? 'left-3' : 'right-3'} bg-black/80 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 flex items-center gap-1 text-imdb font-bold text-sm`}>
@@ -387,20 +419,13 @@
                         )}
                     </main>
 
-                    {/* DETAILS MODAL */}
                     {selectedMedia && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                             <div className="absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity" onClick={closeMediaModal}></div>
-                            
                             <div className="relative w-full max-w-5xl min-h-[500px] max-h-[90vh] overflow-y-auto custom-scrollbar modal-glass rounded-2xl border border-white/10 shadow-2xl flex flex-col z-10 animate-[scaleIn_0.2s_ease-out]">
-                                
-                                <button 
-                                    onClick={closeMediaModal}
-                                    className={`absolute top-4 ${lang === 'ku' ? 'left-4' : 'right-4'} bg-black/50 hover:bg-imdb hover:text-black transition-colors rounded-full p-2 text-white z-20`}
-                                >
+                                <button onClick={closeMediaModal} className={`absolute top-4 ${lang === 'ku' ? 'left-4' : 'right-4'} bg-black/50 hover:bg-imdb hover:text-black transition-colors rounded-full p-2 text-white z-20`}>
                                     <i data-lucide="x" className="w-6 h-6"></i>
                                 </button>
-
                                 {showTrailer ? (
                                     <div className="w-full h-[75vh] min-h-[500px] bg-black relative rounded-2xl overflow-hidden flex flex-col">
                                         <div className="bg-black/90 p-4 flex items-center justify-between z-10 border-b border-white/10">
@@ -410,36 +435,18 @@
                                             </button>
                                             <h3 className="font-bold text-lg truncate px-4">{selectedMedia.title}</h3>
                                         </div>
-                                        
-                                        <div className="flex-1 w-full relative">
-                                            {selectedMedia.type === 'channel' ? (
-                                                <video 
-                                                    id="video-player"
-                                                    className="w-full h-full outline-none"
-                                                    controls 
-                                                    autoPlay
-                                                    ref={(videoNode) => {
-                                                        if (videoNode) {
-                                                            const streamSrc = selectedMedia.streamUrl;
-                                                            if (Hls.isSupported()) {
-                                                                const hls = new Hls();
-                                                                hls.loadSource(streamSrc);
-                                                                hls.attachMedia(videoNode);
-                                                                hls.on(Hls.Events.MANIFEST_PARSED, () => videoNode.play());
-                                                            } else if (videoNode.canPlayType('application/vnd.apple.mpegurl')) {
-                                                                videoNode.src = streamSrc;
-                                                                videoNode.addEventListener('loadedmetadata', () => videoNode.play());
-                                                            }
-                                                        }
-                                                    }}
-                                                ></video>
+                                        <div className="aspect-video bg-black rounded-lg overflow-hidden relative shadow-2xl border border-white/10 group flex-1 w-full">
+                                            {selectedMedia.loadingStream ? (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-50">
+                                                    <div className="w-16 h-16 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                                                    <div className="text-yellow-400 text-lg font-bold animate-pulse">Bypassing Vidsrc Player...</div>
+                                                </div>
                                             ) : (
-                                                <iframe 
-                                                    src={`https://vidsrc.me/embed/${selectedMedia.type === 'movie' ? 'movie' : 'tv'}?tmdb=${selectedMedia.id}`}
-                                                    className="w-full h-full absolute inset-0 border-0"
-                                                    allowFullScreen
-                                                    allow="autoplay; encrypted-media"
-                                                ></iframe>
+                                                (selectedMedia.type === 'channel' || (selectedMedia.streamData && selectedMedia.streamData.is_raw_m3u8)) ? (
+                                                    <video ref={videoRef} className="w-full h-full absolute inset-0 object-cover" controls autoPlay crossOrigin="anonymous"></video>
+                                                ) : (
+                                                    <iframe src={selectedMedia.streamData ? selectedMedia.streamData.stream_url : `https://vidsrc.me/embed/${selectedMedia.type === 'movie' ? 'movie' : 'tv'}?tmdb=${selectedMedia.id}`} className="w-full h-full absolute inset-0 border-0" allowFullScreen allow="autoplay; encrypted-media"></iframe>
+                                                )
                                             )}
                                         </div>
                                     </div>
