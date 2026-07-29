@@ -368,8 +368,8 @@
                 const isTv = selectedMedia.type === 'series' || selectedMedia.type === 'anime';
                 if (useVidzee) {
                     return isTv 
-                        ? `https://player.vidzee.wtf/embed/tv/${selectedMedia.id}/${selectedSeason}/${selectedEpisode}`
-                        : `https://player.vidzee.wtf/embed/movie/${selectedMedia.id}`;
+                        ? `https://movie-app-cloudflare.sarko-akram333.workers.dev/embed/tv/${selectedMedia.id}/${selectedSeason}/${selectedEpisode}`
+                        : `https://movie-app-cloudflare.sarko-akram333.workers.dev/embed/movie/${selectedMedia.id}`;
                 }
                 const proxyUrl = '/api/embed';
                 if (isTv) {
