@@ -132,10 +132,11 @@
         const dict = {
             en: {
                 title: 'IMDb Explorer',
-                searchPlaceholder: 'Search movies, series, anime...',
+                searchPlaceholder: 'Search movies, series, anime, channels...',
                 movies: 'Movies',
                 series: 'TV Series',
                 anime: 'Anime',
+                channels: 'Channels',
                 searchResults: 'Search Results',
                 topRated: 'Top Rated',
                 noResults: 'No media found',
@@ -150,10 +151,11 @@
             },
             ku: {
                 title: 'گەڕانی IMDb',
-                searchPlaceholder: 'گەڕان بۆ فیلم، زنجیرە، ئەنیمێ...',
+                searchPlaceholder: 'گەڕان بۆ فیلم، زنجیرە، ئەنیمێ، کەناڵ...',
                 movies: 'فیلمەکان',
                 series: 'زنجیرەکان',
                 anime: 'ئەنیمێ',
+                channels: 'کەناڵەکان',
                 searchResults: 'ئەنجامەکانی گەڕان',
                 topRated: 'باشترینەکان',
                 noResults: 'هیچ نەدۆزرایەوە',
@@ -316,24 +318,30 @@
                     </header>
 
                     <main className="flex-1 w-full max-w-7xl mx-auto p-8 relative">
-                        <div className="flex gap-8 border-b border-white/10 mb-8 font-semibold text-lg">
+                        <div className="flex gap-8 border-b border-white/10 mb-8 font-semibold text-lg overflow-x-auto no-scrollbar">
                             <button 
-                                className={`pb-4 px-2 transition-colors ${activeTab === 'movie' ? 'tab-active' : 'tab-inactive'}`}
+                                className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'movie' ? 'tab-active' : 'tab-inactive'}`}
                                 onClick={() => setActiveTab('movie')}
                             >
                                 {t.movies}
                             </button>
                             <button 
-                                className={`pb-4 px-2 transition-colors ${activeTab === 'series' ? 'tab-active' : 'tab-inactive'}`}
+                                className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'series' ? 'tab-active' : 'tab-inactive'}`}
                                 onClick={() => setActiveTab('series')}
                             >
                                 {t.series}
                             </button>
                             <button 
-                                className={`pb-4 px-2 transition-colors ${activeTab === 'anime' ? 'tab-active' : 'tab-inactive'}`}
+                                className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'anime' ? 'tab-active' : 'tab-inactive'}`}
                                 onClick={() => setActiveTab('anime')}
                             >
                                 {t.anime}
+                            </button>
+                            <button 
+                                className={`pb-4 px-2 whitespace-nowrap transition-colors ${activeTab === 'channel' ? 'tab-active' : 'tab-inactive'}`}
+                                onClick={() => setActiveTab('channel')}
+                            >
+                                {t.channels}
                             </button>
                         </div>
 
